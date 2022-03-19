@@ -7,7 +7,7 @@ services:
     networks:
         - raft-cluster
     cgroup_parent: raft1
-    command: sh /data/scripts/raft1.sh
+    command: redis-server --port 5001 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr 0.0.0.0:5001
   raft2:
     build: .
     ports:
@@ -15,7 +15,7 @@ services:
     networks:
         - raft-cluster
     cgroup_parent: raft2
-    command: sh /data/scripts/raft2.sh
+    command: redis-server --port 5002 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr 0.0.0.0:5002
     depends_on:
       - raft1
   raft3:
@@ -25,8 +25,20 @@ services:
     networks:
         - raft-cluster
     cgroup_parent: raft3
-    command: sh /data/scripts/raft3.sh
+    command: redis-server --port 5003 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr 0.0.0.0:5003
     depends_on:
       - raft1
+  client:
+    build: .
+    networks:
+        - raft-cluster
+    cgroup_parent: raft3
+    command: python3 main.py
+    depends_on:
+      - raft1
+      - raft2
+      - raft3
+    volumes:
+      - ./output:/output
 networks:
     raft-cluster:
