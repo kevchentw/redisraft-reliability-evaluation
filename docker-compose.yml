@@ -1,0 +1,32 @@
+version: '3'
+services:
+  raft1:
+    build: .
+    ports:
+      - "5001:5001"
+    networks:
+        - raft-cluster
+    cgroup_parent: raft1
+    command: sh /data/scripts/raft1.sh
+  raft2:
+    build: .
+    ports:
+      - "5002:5002"
+    networks:
+        - raft-cluster
+    cgroup_parent: raft2
+    command: sh /data/scripts/raft2.sh
+    depends_on:
+      - raft1
+  raft3:
+    build: .
+    ports:
+      - "5003:5003"
+    networks:
+        - raft-cluster
+    cgroup_parent: raft3
+    command: sh /data/scripts/raft3.sh
+    depends_on:
+      - raft1
+networks:
+    raft-cluster:
