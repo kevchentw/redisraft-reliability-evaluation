@@ -16,3 +16,4 @@ RUN git clone http://github.com/brianfrankcooper/YCSB.git /YCSB
 WORKDIR /YCSB
 RUN cd /YCSB && mvn -pl site.ycsb:redis-binding -am clean package
 COPY main.py /YCSB
+COPY large.dat /YCSB

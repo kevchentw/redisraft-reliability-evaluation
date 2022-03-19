@@ -10,5 +10,5 @@ console.log(sh.redis_cli("-p", "5003", "-h", "raft3", "RAFT.CLUSTER", "JOIN", "r
 
 ycsb = sh.Command("/YCSB/bin/ycsb")
 
-console.log(ycsb("load", "redis", "-s", "-P", "/YCSB/workloads/workloada", "-p", "redis.host=raft1", "-p", "redis.port=5001", _out="/output/outputLoad.txt"))
-console.log(ycsb("run", "redis", "-s", "-P", "/YCSB/workloads/workloada", "-p", "redis.host=raft1", "-p", "redis.port=5001", _out="/output/outputRun.txt"))
+console.log(ycsb("load", "redis", "-s", "-P", "/YCSB/workloads/workloada", "-P", "large.dat", "-p", "redis.host=raft1", "-p", "redis.port=5001", _out="/output/outputLoad.txt"))
+console.log(ycsb("run", "redis", "-s", "-P", "/YCSB/workloads/workloada", "-P", "large.dat", "-p", "redis.host=raft1", "-p", "redis.port=5001", _out="/output/outputRun.txt"))
