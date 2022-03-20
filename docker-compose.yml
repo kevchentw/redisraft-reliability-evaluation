@@ -32,7 +32,6 @@ services:
     build: .
     networks:
         - raft-cluster
-    cgroup_parent: raft3
     command: python3 /app/main.py
     depends_on:
       - raft1
