@@ -6,16 +6,14 @@ services:
       - "5001:5001"
     networks:
         - raft-cluster
-    cgroup_parent: raft1
-    command: redis-server --port 5001 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr 0.0.0.0:5001
+    command: redis-server --port 5001 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr raft1:5001
   raft2:
     build: .
     ports:
       - "5002:5002"
     networks:
         - raft-cluster
-    cgroup_parent: raft2
-    command: redis-server --port 5002 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr 0.0.0.0:5002
+    command: redis-server --port 5002 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr raft2:5002
     depends_on:
       - raft1
   raft3:
@@ -24,15 +22,14 @@ services:
       - "5003:5003"
     networks:
         - raft-cluster
-    cgroup_parent: raft3
-    command: redis-server --port 5003 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr 0.0.0.0:5003
+    command: redis-server --port 5003 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr raft3:5003
     depends_on:
       - raft1
   client:
     build: .
     networks:
         - raft-cluster
-    command: python3 /app/main.py
+    command: tail -f /dev/null
     depends_on:
       - raft1
       - raft2
