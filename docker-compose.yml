@@ -37,5 +37,18 @@ services:
     volumes:
       - ./output:/output
       - ./:/app
+  benchmark:
+    image: redislabs/memtier_benchmark:latest
+    networks:
+        - raft-cluster
+    entrypoint: /usr/bin/tail
+    command: -f /dev/null
+    depends_on:
+      - raft1
+      - raft2
+      - raft3
+    volumes:
+      - ./output:/output
+      - ./:/app
 networks:
     raft-cluster:

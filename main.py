@@ -3,64 +3,67 @@ from rich.console import Console
 from time import sleep
 from os import mkdir
 from datetime import datetime
+import json
 
 console = Console()
-
-console.log(sh.docker_compose("exec", "-T", "client", "redis-cli",
-            "-p", "5001", "-h", "raft1", "raft.cluster", "init"))
-console.log(sh.docker_compose("exec",  "-T", "client", "redis-cli",
-            "-p", "5002", "-h", "raft2", "RAFT.CLUSTER", "JOIN", "raft1:5001"))
-console.log(sh.docker_compose("exec", "-T", "client", "redis-cli",
-            "-p", "5003", "-h", "raft3", "RAFT.CLUSTER", "JOIN", "raft1:5001"))
 
 # console.log(sh.docker_compose("exec",  "-T", "client", "redis-cli",
 #             "-p", "5002", "-h", "raft2", "--raw", "RAFT.INFO"))
 # console.log(sh.docker_compose("exec",  "-T", "client", "redis-cli",
 #             "-p", "5003", "-h", "raft3", "--raw", "RAFT.INFO"))
 
-# # ycsb = sh.Command("/YCSB/bin/ycsb")
-
-# # console.log(ycsb("load", "redis", "-s", "-P", "/YCSB/workloads/workloada", "-P", "large.dat", "-p", "redis.host=raft1", "-p", "redis.port=5001", _out="/output/outputLoad.txt"))
-# # console.log(ycsb("run", "redis", "-s", "-P", "/YCSB/workloads/workloada", "-P", "large.dat", "-p", "redis.host=raft1", "-p", "redis.port=5001", _out="/output/outputRun.txt"))
 timestamp = datetime.utcnow()
 console.log("start benchmark")
 
 folder = f"./output/{timestamp}"
 mkdir(folder)
 
-for c in range(1, 300, 10):
-    bm = sh.docker_compose("exec", "-T", "client", "redis-benchmark", "-p", "5001", "-h", "raft1", "-q", "-t",
-                           "set,get", "-n", "10000000000", "-c", c, "-P", "16", "-d", "1024", "-l", _bg=True)
-    sleep(3)
-    latency = sh.docker_compose("exec", "-T", "client", "redis-cli", "-p", "5001", "-h", "raft1",
-                                "--latency-history", _bg=True, _out=f"{folder}/latency-{c}.txt")
-    f = open(f"{folder}/tp-{c}.txt", "w")
+cluster = [
+    ("raft1", "5001"),
+    ("raft2", "5002"),
+    ("raft3", "5003")
+]
 
-    for i in range(10):
-        stats = sh.docker_compose(
-            "exec",  "-T", "client", "redis-cli", "-p", "5002", "-h", "raft2", "info", "stats")
-        data = stats.stdout.decode().split("\r\n")
-        console.log("raft2", data[3])
-        stats = sh.docker_compose(
-            "exec",  "-T", "client", "redis-cli", "-p", "5003", "-h", "raft3", "info", "stats")
-        data = stats.stdout.decode().split("\r\n")
-        console.log("raft3", data[3])
-        stats = sh.docker_compose(
-            "exec",  "-T", "client", "redis-cli", "-p", "5001", "-h", "raft1", "info", "stats")
-        data = stats.stdout.decode().split("\r\n")
-        console.log(data[3])
-        f.write(data[3].split(":")[1]+"\n")
+result = []
+sh.docker_compose("up", "--force-recreate", "-d")
+
+for c in range(1, 200, 5):
+    for p in [1]:
+        console.log("start cluser")
+        console.log("join raft")
+
+        console.log(sh.docker_compose("exec", "-T", "client", "redis-cli",
+                    "-p", "5001", "-h", "raft1", "raft.cluster", "init"))
+        console.log(sh.docker_compose("exec",  "-T", "client", "redis-cli",
+                    "-p", "5002", "-h", "raft2", "RAFT.CLUSTER", "JOIN", "raft1:5001"))
+        console.log(sh.docker_compose("exec", "-T", "client", "redis-cli",
+                    "-p", "5003", "-h", "raft3", "RAFT.CLUSTER", "JOIN", "raft1:5001"))
+
+        res = {"c" : c, "p": p, "latency" : [], "throughput" : []}
+        bm_process = sh.docker_compose("exec", "-T", "client", "redis-benchmark", "-p", "5001", "-h", "raft1", "-q", "-t",
+                            "set,get", "-n", "10000000000", "-c", str(c), "-P", str(p), "-d", "1024", "-l", _bg=True, _bg_exc=False)
+
+        sleep(5)
+        for (host, port) in cluster:
+            stats_process = sh.docker_compose(
+                "exec",  "-T", "client", "redis-cli", "-p", port, "-h", host, "info", "stats")
+            throughput = stats_process.stdout.decode().split("\r\n")[3].split(":")[1]
+            res["throughput"].append(throughput)
+            latency_process = sh.docker_compose("exec", "-T", "client", "redis-cli", "-p", port, "-h", host,
+                                        "--latency", _bg=True)
+            latency = latency_process.stdout.decode("utf-8").strip().split(" ")[2]
+            res["latency"].append(latency)
+
+        with open(f"{folder}/result.json", "a+") as f:
+            f.write(json.dumps(res)+"\n")
         sleep(1)
+        print(res)
+        try:
+            latency_process.terminate()
+        except Exception:
+            pass
+        bm_process.terminate()
 
-    f.close()
-    try:
-        latency.kill()
-    except Exception:
-        pass
-    try:
-        bm.kill()
-    except Exception:
-        pass
-    sleep(3)
+        sleep(5)
 
 console.log("end benchmark")
