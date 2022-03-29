@@ -33,8 +33,8 @@ def start_cluster():
                 "-p", "5003", "-h", "raft3", "RAFT.CLUSTER", "JOIN", "raft1:5001"))
 
 
-def benchmark(client_cnt, thread_cnt, fn, round=1, bg=False):
-    return sh.docker_compose("exec", "-T", "benchmark", "memtier_benchmark", "-p", "5001", "-s", "raft1",
+def benchmark(client_cnt, thread_cnt, fn, round=1, leader=("raft1", 5001,), bg=False):
+    return sh.docker_compose("exec", "-T", "benchmark", "memtier_benchmark", "-p", leader[1], "-s", leader[0],
                              "-c", str(client_cnt), "-t", str(
                                  thread_cnt), "--out-file", fn,
                              "--test-time", 10, "--data-offset", "1048575", "--data-size", "1024", "-x", round, _bg=bg, _bg_exc=False)
@@ -91,7 +91,54 @@ def run_fail_injection(target: str, memory: bool = False, cpu: bool = False):
     console.log("wait benchmark done")
 
 
-for target, port in cluster:
-    run_fail_injection(target)
-    # run_fail_injection(target, memory=True)
-    # run_fail_injection(target, cpu=True)
+def get_leader():
+    for (name, port) in cluster:
+        try:
+            info = sh.docker_compose("exec", "-T", "client", "redis-cli",
+                    "-p", port, "-h", name, "RAFT.INFO")
+            if "role:leader" in info:
+                return (name, port,)
+        except Exception:
+            pass
+    return ""
+        
+
+def run_crash_leader():
+    target = "raft1"
+    client_cnt = 25
+    thread_cnt = 4
+    start_cluster()
+    bm_process = benchmark(client_cnt, thread_cnt,
+              f"/output/fail-injection/{target}-crash-leader.txt", 1, bg=True)
+    sleep(1)
+    sh.docker("stop", f"redisraft-reliability-evaluation_{target}_1")
+    sleep(5)
+    leader = get_leader()
+    console.log("new leader", leader)
+    bm_process = benchmark(client_cnt, thread_cnt,
+            f"/output/fail-injection/{target}-crash-leader.txt", 1, leader, bg=True)
+    console.log("wait benchmark")
+    bm_process.wait()
+    console.log("wait benchmark done")
+
+
+def run_crash_follower(target):
+    client_cnt = 25
+    thread_cnt = 4
+    start_cluster()
+    bm_process = benchmark(client_cnt, thread_cnt,
+              f"/output/fail-injection/{target}-crash-follower.txt", 1, bg=True)
+    sleep(1)
+    sh.docker("stop", f"redisraft-reliability-evaluation_{target}_1")
+    console.log("wait benchmark")
+    bm_process.wait()
+    console.log("wait benchmark done")
+
+# for target, port in cluster:
+#     run_fail_injection(target)
+#     run_fail_injection(target, memory=True)
+#     run_fail_injection(target, cpu=True)
+
+run_crash_leader()
+run_crash_follower("raft2")
+run_crash_follower("raft3")
