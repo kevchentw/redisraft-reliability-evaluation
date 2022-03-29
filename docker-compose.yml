@@ -7,6 +7,11 @@ services:
     networks:
         - raft-cluster
     command: redis-server --port 5001 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr raft1:5001
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 300M
   raft2:
     build: .
     ports:
@@ -16,6 +21,11 @@ services:
     command: redis-server --port 5002 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr raft2:5002
     depends_on:
       - raft1
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 300M
   raft3:
     build: .
     ports:
@@ -25,6 +35,11 @@ services:
     command: redis-server --port 5003 --dbfilename raft.rdb --protected-mode no --loadmodule /data/redisraft.so raft-log-filename raftlog.db addr raft3:5003
     depends_on:
       - raft1
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 300M
   client:
     build: .
     networks:
