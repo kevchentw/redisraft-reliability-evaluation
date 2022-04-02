@@ -11,7 +11,7 @@ services:
       resources:
         limits:
           cpus: '1'
-          memory: 300M
+          memory: 1024M
   raft2:
     build: .
     ports:
@@ -25,7 +25,7 @@ services:
       resources:
         limits:
           cpus: '1'
-          memory: 300M
+          memory: 1024M
   raft3:
     build: .
     ports:
@@ -39,7 +39,7 @@ services:
       resources:
         limits:
           cpus: '1'
-          memory: 300M
+          memory: 1024M
   client:
     build: .
     networks:
