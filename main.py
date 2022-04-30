@@ -128,17 +128,22 @@ def run_crash_leader():
     target = "raft1"
     start_cluster()
     bm_process = benchmark(client_cnt, thread_cnt,
-              f"/output/fail-injection/{target}-crash-leader-before.txt", 3, bg=True)
+              f"/output/fail-injection/{target}-crash-leader-before.txt", 1, bg=True)
     sleep(0.5)
     sh.docker("stop", f"redisraft-reliability-evaluation_{target}_1")
+    t = time()
     leader = None
     while not leader:
         leader = get_leader()
         console.log("new leader", leader)
+    diff = time() - t
+    t = time()
     bm_process = benchmark(client_cnt, thread_cnt,
-            f"/output/fail-injection/{target}-crash-leader-after.txt", 3, leader, bg=True)
+            f"/output/fail-injection/{target}-crash-leader-after.txt", 1, leader, bg=True)
     console.log("wait benchmark")
     bm_process.wait()
+    diff2 = time() - t
+    console.log("diff", diff, diff2)
     console.log("wait benchmark done")
 
 
@@ -159,13 +164,13 @@ def run_crash_follower(target):
 #     run_fail_injection(target, memory=True)
 #     run_fail_injection(target, cpu=True)
 
-# run_crash_leader()
+run_crash_leader()
 # run_crash_follower("raft2")
 # run_crash_follower("raft3")
 
 
 # for level in [4, 5]:
-run_fail_injection([cluster[2][0], cluster[1][0]], memory=True, level=1)
-run_fail_injection([cluster[2][0], cluster[1][0]], cpu=True, level=1)
+# run_fail_injection([cluster[2][0], cluster[1][0]], memory=True, level=1)
+# run_fail_injection([cluster[2][0], cluster[1][0]], cpu=True, level=1)
 
 # run_baseline()
